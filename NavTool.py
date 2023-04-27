@@ -3,10 +3,10 @@ import discord
 from dotenv import load_dotenv
 from discord.ext import commands
 from modules.Gpt import ask
+from modules.schedules import Schedules
 from modules.resources import Resources
 from modules.embed import D_Embeds
-import numpy as np
-import calendar
+
 
 load_dotenv()
 
@@ -16,9 +16,12 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents, help_command=None)
+
+### Objetos
+
 resource = Resources()
+schedule = Schedules()
 embeds = D_Embeds()
-cal = calendar.Calendar()
 
 ### Commands
 
@@ -143,24 +146,44 @@ async def resource_list_other(ctx, username: discord.User):
 
 
 @bot.command()
-async def schedule_dump(ctx, year: int, month: int):
-    response = np.zeros((5, 7))
-    calendar_iter = cal.itermonthdays(year, month)
+async def schedule_reminder(ctx, timer: str, msg: str):
+    try:
+        await ctx.send(
+            embed=embeds.pass_embed("Su recordatorio ha sido preparado correctamente")
+        )
+        await schedule.remind(timer)
+        await ctx.reply(f"Here's the reminder you set: {msg}")
+    except:
+        em = embeds.fail_embed("Revise el formato de escritura")
+        await ctx.send(embed=em)
 
-    suma = 0
-    for i in response:
-        for j in i:
-            suma += 1
-    row = 0
-    column = 0
-    for i in calendar_iter:
-        response[row][column] = i
-        column += 1
-        if column >= 7:
-            row += 1
-            column = 0
-    print(response)
-    em = embeds.pass_embed(response)
+
+@bot.command()
+async def schedule_add(ctx, year: int, month: int, day: int, event: str):
+    user = ctx.author.id
+    try:
+        schedule.add(year, month, day, event, user)
+        em = embeds.pass_embed("Se ha agregado el evento al calendario")
+    except:
+        em = embeds.fail_embed("Se ha producido un error, por favor revise el formato")
+    await ctx.send(embed=em)
+
+
+@bot.command()
+async def schedule_show(ctx):
+    user = ctx.author.id
+    response = schedule.list(user)
+    await ctx.send(response)
+
+
+@bot.command()
+async def schedule_delete(ctx):
+    user = ctx.author.id
+    try:
+        schedule.drop(user)
+        em = embeds.pass_embed("Se ha eliminado la entrada correctamente")
+    except:
+        em = embeds.fail_embed("El archivo ya ha sido eliminado o no existe.")
     await ctx.send(embed=em)
 
 
